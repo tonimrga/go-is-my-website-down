@@ -1,2 +1,2 @@
-# go-is-my-website-down
+# Golang -is my website down API
 Simple API for checking websites availability
