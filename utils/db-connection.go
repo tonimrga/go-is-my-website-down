@@ -1,8 +1,10 @@
-// models/setup.go
+// utils/db-connection.go
 
-package models
+package utils
 
 import (
+	"is-my-website-down/models"
+
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
@@ -17,7 +19,7 @@ func ConnectDataBase() {
 		panic("Connection to the database failed!")
 	}
 
-	database.AutoMigrate(&Website{})
+	database.AutoMigrate(&models.Website{})
 
 	DB = database
 }

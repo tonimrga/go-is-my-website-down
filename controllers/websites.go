@@ -1,11 +1,11 @@
-// controllers books.go
+// controllers websites.go
 
 package controllers
 
 import (
-	"net/http"
-
 	"is-my-website-down/models"
+	"is-my-website-down/utils"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,7 +13,7 @@ import (
 // GetWebsites - GET /websites
 func GetWebsites(c *gin.Context) {
 	var websites []models.Website
-	models.DB.Find(&websites)
+	utils.DB.Find(&websites)
 
 	c.JSON(http.StatusOK, gin.H{"websites": websites})
 }
@@ -26,8 +26,13 @@ func CreateWebsite(c *gin.Context) {
 		return
 	}
 
+	if !utils.IsURL(input.URL) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Website URL not valid!"})
+		return
+	}
+
 	website := models.Website{Name: input.Name, URL: input.URL}
-	models.DB.Create(&website)
+	utils.DB.Create(&website)
 
 	c.JSON(http.StatusOK, gin.H{"website": website})
 }
@@ -36,7 +41,7 @@ func CreateWebsite(c *gin.Context) {
 func GetOneWebsite(c *gin.Context) {
 	var website models.Website
 
-	if err := models.DB.Where("id = ?", c.Param("id")).First(&website).Error; err != nil {
+	if err := utils.DB.Where("id = ?", c.Param("id")).First(&website).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Website not found!"})
 		return
 	}
@@ -47,7 +52,7 @@ func GetOneWebsite(c *gin.Context) {
 // UpdateWebsite - PATCH /website/:id
 func UpdateWebsite(c *gin.Context) {
 	var website models.Website
-	if err := models.DB.Where("id = ?", c.Param("id")).First(&website).Error; err != nil {
+	if err := utils.DB.Where("id = ?", c.Param("id")).First(&website).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Website not found!"})
 		return
 	}
@@ -58,50 +63,25 @@ func UpdateWebsite(c *gin.Context) {
 		return
 	}
 
-	models.DB.Model(&website).Updates(input)
+	if !utils.IsURL(input.URL) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Website URL not valid!"})
+		return
+	}
+
+	utils.DB.Model(&website).Updates(input)
 
 	c.JSON(http.StatusOK, gin.H{"website": website})
 }
 
 // DeleteWebsite - DELETE - /website/:id
 func DeleteWebsite(c *gin.Context) {
-	// Get model if exist
 	var website models.Website
-	if err := models.DB.Where("id = ?", c.Param("id")).First(&website).Error; err != nil {
+	if err := utils.DB.Where("id = ?", c.Param("id")).First(&website).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Website not found!"})
 		return
 	}
 
-	models.DB.Delete(&website)
+	utils.DB.Delete(&website)
 
 	c.JSON(http.StatusOK, gin.H{"website": website})
-}
-
-// LiveCheck - GET /live-check
-func LiveCheck(c *gin.Context) {
-	var websites []models.Website
-	models.DB.Find(&websites)
-
-	channel := make(chan string)
-	websiteStatuses := []string{}
-
-	for _, website := range websites {
-		go IsWebsiteLive(website, channel)
-	}
-
-	for i := 0; i < len(websites); i++ {
-		websiteStatuses = append(websiteStatuses, <-channel)
-	}
-
-	c.JSON(http.StatusOK, websiteStatuses)
-}
-
-func IsWebsiteLive(website models.Website, c chan string) {
-	_, err := http.Get(website.URL)
-	if err != nil {
-		c <- website.Name + " is DOWN!"
-		return
-	}
-
-	c <- website.Name + " is OK."
 }
